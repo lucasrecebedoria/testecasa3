@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
+    }
+    function matFromUid() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.matricula;
+    }
+
+    match /usuarios/{userId} {
+      allow read: if request.auth != null && (isAdmin() || userId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    match /relatorios/{id} {
+      allow read: if request.auth != null && ( isAdmin() || resource.data.matricula == matFromUid() );
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}
